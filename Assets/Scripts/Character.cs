@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class Character : MonoBehaviour
 {
@@ -10,6 +11,25 @@ public class Character : MonoBehaviour
     public Camera camera;
     public Rigidbody rigidbody;
     private static Character singleton;
+    IEnumerator actualCameraShake(Quaternion startQuaternion,Quaternion endQuaternion){
+        const float speed = 20f;
+        for (float t = 0; t<1;t+=Time.deltaTime*speed){
+            singleton.camera.transform.rotation = Quaternion.Lerp(startQuaternion,endQuaternion,t);
+            yield return null;
+        }
+        for (float t = 0; t<1;t+=Time.deltaTime*speed){
+            singleton.camera.transform.rotation = Quaternion.Lerp(endQuaternion,startQuaternion,t);
+            yield return null;
+        }
+        singleton.camera.transform.rotation=startQuaternion;
+    }
+    public static void CameraShake(float value){
+        Quaternion startQuaternion = singleton.camera.transform.rotation;
+        singleton.camera.transform.RotateAround(singleton.camera.transform.position,Vector3.right,value);
+        Quaternion endQuaternion = singleton.camera.transform.rotation;
+        singleton.camera.transform.RotateAround(singleton.camera.transform.position,Vector3.right,-value);
+        singleton.StartCoroutine(singleton.actualCameraShake(startQuaternion,endQuaternion));
+    }
     void Awake(){
         singleton=this;
     }
@@ -31,23 +51,62 @@ public class Character : MonoBehaviour
         Cursor.visible = true;
 
     }
-    public static void CancelEverything(){
+    public static void CancelEverything(bool showMouse = true){
         singleton.previousAction?.DeactivatePopUp();
         singleton.previousAction = null;
         singleton.cancelEverythingFlag = true;
-        singleton.ShowMouse();
+        if (showMouse)
+            singleton.ShowMouse();
+    }
+    IEnumerator safeAllow(){
+        yield return new WaitForSeconds(0.1f);
+        singleton.cancelEverythingFlag = false;
     }
     public static void AllowEverything(){
-        singleton.cancelEverythingFlag = false;
+        singleton.StartCoroutine(singleton.safeAllow());
     }
     bool cancelEverythingFlag = false;
     ActionOnE previousAction = null;
     public LayerMask actionELayerMask;
+    public GameObject UI_panel;
+    public bool menu = false;
+    public static float slider_sensitivity_value = 0.5f;
+    public Slider slider;
+    public AudioSource sourceToMute;
+    public void SliderChanged(){
+        slider_sensitivity_value = slider.value;
+    }
+    public void GameOverClicked(){
+        Application.Quit();
+    }
+    public void ResumeClicked(){
+        
+            menu = false;
+            UI_panel.SetActive(false);
+            AllowEverything();
+             sourceToMute.pitch = 1;
+            Time.timeScale = 1f;
+    }
     // Update is called once per frame
     void Update()
     {
+        _mouseSensitivity = slider_sensitivity_value*40f;
+        slider.value = slider_sensitivity_value;
+        if (menu && Input.GetKeyDown(KeyCode.Escape)){
+            ResumeClicked();
+            return;
+        }
         if (cancelEverythingFlag)
             return;
+        if (!menu && Input.GetKeyDown(KeyCode.Escape)){
+            menu = true;
+            UI_panel.SetActive(true);
+            CancelEverything();
+            Time.timeScale = 0f;
+             sourceToMute.pitch = 0;
+            return;
+        }
+        camera.transform.localPosition= new Vector3(0,0,0);
         HideMouse();
         RaycastHit hit;
         Ray ray = new Ray(camera.transform.position,camera.transform.forward);
@@ -69,7 +128,8 @@ public class Character : MonoBehaviour
         previousAction = action;
         if (Input.GetKeyDown(KeyCode.E)){
             action?.ActivateAction();
-        }
+            rigidbody.velocity = new Vector3(0,0,0);
+        }else{
         //Get Mouse position Input
         float mouseX = Input.GetAxis("Mouse X") * _mouseSensitivity; //changed this line.
         float mouseY = Input.GetAxis("Mouse Y") * _mouseSensitivity; //changed this line.
@@ -85,6 +145,7 @@ public class Character : MonoBehaviour
 
         //Keyboard commands
         rigidbody.velocity = GetBaseInput() * mainSpeed;
+        }
     }
 
     private Vector3 GetBaseInput()

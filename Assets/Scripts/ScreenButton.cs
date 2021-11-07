@@ -9,11 +9,25 @@ public class ScreenButton : MonoBehaviour
     {
         
     }
-
+    [SerializeField]MeshRenderer meshRendererToChange;
+    public bool isSell;
+    bool isGray = false;
+    [SerializeField] private Color gray,purple;
     // Update is called once per frame
+    public bool firstUpdate = true;
     void Update()
     {
-        
+        bool newIsGray;
+        if (isSell){
+            newIsGray = ActualComputerScreen.currentlyBoughtBethovens == 0;
+        }else{
+            newIsGray = ActualComputerScreen.currentMoney < ActualComputerScreen.currentBethovenValue;
+        }
+        if (newIsGray != isGray || firstUpdate){
+            meshRendererToChange.materials[0].color = newIsGray? gray:purple;
+            isGray = newIsGray;
+            firstUpdate = false;
+        }
     }
     public Action onClick;
     void OnMouseDown()

@@ -15,6 +15,7 @@ public class LightControl : MonoBehaviour
     // Start is called before the first frame update
     void Awake(){
         singleton=this;
+        electricityState=true;
     }
     public static bool electricityState= true;
     public static void SetPCLight(bool state){

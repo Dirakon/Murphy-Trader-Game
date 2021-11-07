@@ -11,30 +11,40 @@ public class PC : MonoBehaviour
     // Start is called before the first frame update
     void Awake()
     {
-        singleton=this;
+        pcState = true;
+        singleton = this;
+        currentText = "Нажми \"у\", чтобы выключить ПК";
     }
-    void Start(){
+    void Start()
+    {
         action = GetComponentInChildren<ActionOnE>();
         action.action += ClickOnPC;
     }
-    public void ClickOnPC(){
-        if (pcState){
+    public void ClickOnPC()
+    {
+        if (pcState)
+        {
             ShutDown();
-        }else if (LightControl.electricityState){
+        }
+        else if (LightControl.electricityState)
+        {
+            RandomEventManager.RollUpdate();
             TryToTurnOn();
         }
     }
-    public static void ShutDown(){
+    public static void ShutDown()
+    {
         pcState = false;
-            singleton.action.popUpText=singleton.action.popUpText.Replace("выключить","включить")
-            .Replace("off","on");
+        singleton.currentText = "Нажми \"у\", чтобы включить ПК";
         LightControl.SetPCLight(false);
-            singleton.materialToChange.materials[2].color = Color.red;
+        singleton.materialToChange.materials[2].color = Color.red;
     }
-    public static void TryToTurnOn(){
-        if (LightControl.electricityState){
-            singleton.action.popUpText=singleton.action.popUpText.Replace("включить","выключить")
-            .Replace("on","off");
+    string currentText;
+    public static void TryToTurnOn()
+    {
+        if (LightControl.electricityState)
+        {
+            singleton.currentText = "Нажми \"у\", чтобы выключить ПК";
             pcState = true;
             LightControl.SetPCLight(true);
             singleton.materialToChange.materials[2].color = Color.blue;
@@ -43,6 +53,6 @@ public class PC : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+        action.popUpText = LightControl.electricityState ? currentText : "Сначала включи электричество!";
     }
 }

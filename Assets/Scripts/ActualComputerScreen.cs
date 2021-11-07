@@ -10,17 +10,27 @@ public class ActualComputerScreen : MonoBehaviour
         StartCoroutine(electricityWatcher());
         StartCoroutine(autoBethoven());
     }
-    void Awake(){
+    void Awake()
+    {
         singelton = this;
+        currentlyBoughtBethovens = 0;
+        currentMoney = 200;
     }
     public static ActualComputerScreen singelton;
     public bool canOperate = true;
+    public void Render(){
+        if (canOperate){
+            Init();
+        }else{
+            DeInit();
+        }
+    }
     public void Init()
     {
         canOperate = true;
         foreach (var a in objectsOnScreen)
         {
-            a?.SetActive(true);
+            a?.SetActive(a==specialUpdateThingy?TradeManager.windowsUpdate:!TradeManager.windowsUpdate);
         }
     }
     public void DeInit()
@@ -33,24 +43,41 @@ public class ActualComputerScreen : MonoBehaviour
     }
     public static float currentBethovenValue = 0;
     public static int currentlyBoughtBethovens = 0;
+    public static int boughtRecently = 0, soldRecently = 0;
     public static float currentMoney = 0;
     public float minChangeSeconds = 0.1f;
     public float maxChangeSeconds = 1.5f;
-    public float speed = 1f;
+    public static float speed = 1f;
     public float maxSlope = 2f;
     public float rerollerAttempts = 4;
     public GameObject[] objectsOnScreen;
     public LineRenderer lineRenderer;
     public float xChangePerT = 100f;
+    public float chanceOfEventOnBigSlope = 0.1f;
+    public float riggedCoefficient = 0.2f;
+    public float cumulativeMult = 0;
+    public GameObject specialUpdateThingy;
     public static bool NearlyEqual(float f1, float f2)
     {
         // Equal if they are within 0.00001 of each other
         return Mathf.Abs(f1 - f2) < 0.00001;
     }
+    bool eventQueued = false;
+    public IEnumerator playEventSoon()
+    {
+        Debug.Log(eventQueued);
+        if (!eventQueued)
+        {
+            eventQueued = true;
+            yield return new WaitForSeconds(0.1f);
+            RandomEventManager.playRandomEvent();
+            eventQueued = false;
+        }
+    }
     public IEnumerator autoBethoven()
     {
         float minBethoven = 0.1f;
-        float maxBethoven = 100f;
+        float maxBethoven = 400f;
         float maxY = 1.6f;
         LinkedList<Vector3> points = new LinkedList<Vector3>();
         float maxX = 2.9f;
@@ -77,6 +104,26 @@ public class ActualComputerScreen : MonoBehaviour
             }
             if (!didWePass)
                 continue;
+            slope -= soldRecently * riggedCoefficient - boughtRecently * riggedCoefficient;
+            // Debug.Log(slope);
+            if (Mathf.Abs(slope) >= 0.3f && LightControl.electricityState && PC.pcState && !TradeManager.windowsUpdate)
+            {
+                // Big slope
+                Debug.Log("big slope");
+                float modifier = 1f;
+                if (slope < 0)
+                    modifier = 1.5f;
+                else
+                    modifier += (currentlyBoughtBethovens)>3?2f:(currentlyBoughtBethovens/1.5f);
+                cumulativeMult+=0.1f;
+                if (Random.Range(0f, 1f) <= chanceOfEventOnBigSlope*modifier+cumulativeMult)
+                {
+                    cumulativeMult=0;
+                    Debug.Log("rolled! les go!");
+                    StartCoroutine(playEventSoon());
+                }
+            }
+            boughtRecently = soldRecently = 0;
             float secondsToWait = Random.Range(minChangeSeconds, maxChangeSeconds);
             points.AddLast(new Vector3(maxX, maxY * currentValue01, 0));
             while (secondsToWait > 0)
@@ -124,6 +171,15 @@ public class ActualComputerScreen : MonoBehaviour
                 lineRenderer.SetPositions(pointsArr);
                 secondsToWait -= t;
                 currentBethovenValue = currentValue01 * (maxBethoven - minBethoven) + minBethoven;
+
+                float alpha = 1.0f;
+                Gradient gradient = new Gradient();
+                gradient.SetKeys(
+                    new GradientColorKey[] { new GradientColorKey(Color.Lerp(Color.red,Color.green,points.First.Value.y/maxY), 0.0f),
+                    new GradientColorKey(Color.Lerp(Color.red,Color.green,points.Last.Value.y/maxY), 1.0f) },
+                    new GradientAlphaKey[] { new GradientAlphaKey(alpha, 0.0f), new GradientAlphaKey(alpha, 1.0f) }
+                );
+                lineRenderer.colorGradient = gradient;
                 yield return null;
             }
             yield return null;

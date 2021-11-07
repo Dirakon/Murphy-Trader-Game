@@ -8,11 +8,11 @@ public class InterfaceMaster : MonoBehaviour
     public TextMeshPro murhphToDollar, curMurphs, curMoney;
     ScreenButton instantiateButton(GameObject prefab)
     {
-        ScreenButton but =  Instantiate(prefab, father.position, father.rotation, father).GetComponent<ScreenButton>();
-    
+        ScreenButton but = Instantiate(prefab, father.position, father.rotation, father).GetComponent<ScreenButton>();
+
         but.transform.localPosition = new Vector3(Random.Range(minLX, maxLX), lY, Random.Range(minLZ, maxLZ));
-        
-    
+
+
         return but;
     }
     GameObject[] currentButtons;
@@ -22,17 +22,34 @@ public class InterfaceMaster : MonoBehaviour
     bool respawnButtonsFlag = false;
     public void BuyClicked()
     {
-        respawnButtonsFlag = true;
-        if (ActualComputerScreen.currentMoney < ActualComputerScreen.currentBethovenValue){
+        if (ActualComputerScreen.currentMoney < ActualComputerScreen.currentBethovenValue)
+        {
             // Can't afford to buy???
-        }else{
-
         }
+        else
+        {
+            Character.CameraShake(5f);
+            ActualComputerScreen.currentMoney -= ActualComputerScreen.currentBethovenValue;
+            ActualComputerScreen.currentlyBoughtBethovens += 1;
+            ActualComputerScreen.boughtRecently++;
+            StartCoroutine(destroyInTime(Instantiate(clickedEffectPrefab,currentButtons[1].transform.position,Quaternion.identity)));
+        }
+        respawnButtonsFlag = true;
     }
     public void SellClicked()
     {
+        if (ActualComputerScreen.currentlyBoughtBethovens != 0)
+        {
+            
+            Character.CameraShake(5f);
+            ActualComputerScreen.currentMoney += ActualComputerScreen.currentBethovenValue;
+            ActualComputerScreen.currentlyBoughtBethovens -= 1;
+            ActualComputerScreen.soldRecently++;
+            StartCoroutine(destroyInTime(Instantiate(clickedEffectPrefab,currentButtons[0].transform.position,Quaternion.identity)));
+        }
         respawnButtonsFlag = true;
     }
+    public GameObject clickedEffectPrefab;
     public void RespawnButtons()
     {
         if (currentButtons[1] != null)
@@ -48,20 +65,27 @@ public class InterfaceMaster : MonoBehaviour
         buy.onClick += BuyClicked;
         currentButtons[0] = sell.gameObject;
         currentButtons[1] = buy.gameObject;
-
+        sell.isSell = true;
+        buy.isSell = false;
         ActualComputerScreen.singelton.objectsOnScreen[ActualComputerScreen.singelton.objectsOnScreen.Length - 2] = sell.gameObject;
         ActualComputerScreen.singelton.objectsOnScreen[ActualComputerScreen.singelton.objectsOnScreen.Length - 1] = buy.gameObject;
+    }
+    IEnumerator destroyInTime(GameObject gameObject){
+        yield return new WaitForSeconds(1f);
+        Destroy(gameObject);
     }
     void Start()
     {
         currentButtons = new GameObject[2];
-        GameObject[] copy = ActualComputerScreen.singelton.objectsOnScreen;
-        ActualComputerScreen.singelton.objectsOnScreen = new GameObject[copy.Length + 2];
-        for (int i = 0; i < copy.Length; ++i)
-        {
-            ActualComputerScreen.singelton.objectsOnScreen[i] = copy[i];
-        }
-        RespawnButtons();
+        
+        ScreenButton sell = ActualComputerScreen.singelton.objectsOnScreen[ActualComputerScreen.singelton.objectsOnScreen.Length - 2].GetComponent<ScreenButton>(), 
+        buy = ActualComputerScreen.singelton.objectsOnScreen[ActualComputerScreen.singelton.objectsOnScreen.Length - 1].GetComponent<ScreenButton>();
+        currentButtons[0] = sell.gameObject;
+        currentButtons[1] = buy.gameObject;
+        sell.onClick += SellClicked;
+        buy.onClick += BuyClicked;
+        sell.isSell = true;
+        buy.isSell = false;
     }
 
     // Update is called once per frame

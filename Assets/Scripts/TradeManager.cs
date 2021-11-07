@@ -8,6 +8,7 @@ public class TradeManager : MonoBehaviour
     public ActionOnE action;
     void Awake(){
         singleton=this;
+        windowsUpdate  = false;
     }
     void Start()
     {
@@ -36,6 +37,8 @@ public class TradeManager : MonoBehaviour
             camera.transform.rotation = Quaternion.Lerp(saveQuaternion,endQuaternion,t);
             yield return null;
         }
+        camera.transform.position = endPosition;
+        camera.transform.rotation = endQuaternion;
         tradingStartedFlag = true;
     }
     IEnumerator outOfTradingSmooth(){
@@ -51,9 +54,18 @@ public class TradeManager : MonoBehaviour
         Character.AllowEverything();
     }
     public bool tradingStartedFlag = false;
+    public static bool windowsUpdate = false;
     // Update is called once per frame
     void Update()
     {
+        if (windowsUpdate){
+            action.popUpText = "Как не вовремя...";
+        }
+        else if (PC.pcState){
+            action.popUpText = "Нажми \"у\", чтобы сесть за ПК";
+        }else{
+            action.popUpText = "Сперва включи компьютер!";
+        }
         if (!tradingStartedFlag)
             return;
         if (Input.GetKeyDown(KeyCode.E) || !LightControl.electricityState){
